@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>D3 Example</title>
+    
+    <script type="text/javascript" src="./d3/d3.js" charset="utf-8"></script>
+    <script type="text/javascript" src="./jq/jq.js"></script>
+    <script type="text/javascript" src="./bs/bs/js/bootstrap.js"></script>
+
+    <link href="./bs/bs/css/bootstrap.css" rel="stylesheet" />
+    <style type="text/css">
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #99ffff;
+      shape-rendering: crispEdges;
+    }
+    .axis text {
+      fill: #00ffff;
+      text-shadow: 6px 6px 6px black;
+    }
+    .axis {      
+      opacity: 0.5;
+    } 
+    .button-bar {
+      margin-left: 15px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .selected {
+      font-weight: bold;
+    }
+    
+    .slider{
+      width: 800px;
+      height: 25px;
+      cursor: pointer;
+      animate: 0.2s;
+      box-shadow: 1px 1px 1px 2px black;
+      background: #000000;
+      border: 10px solid #000000;
+      margin-top: 10px;
+    }
+    </style>
+  </head>
+  <body bgcolor="#E6E6FA">
+  <h3 align="center" id = "year_header" style = "font-family:Times New Roman; color:#990000; font-size:30px;">Year: 1900</h3>
+  
+  <h4 style = "font-family:MS UI Gothic; color:#990033; font-size:30px;">
+    <marquee>Click 'PLAY'</marquee>
+  </h4>
+
+<div class="row">
+<div class="col-lg-6" id="mainsvg">
+    <script type="text/javascript" id = "demo_code">
+      var outerWidth = 870;
+      var outerHeight = 550;
+      var marginLeft   = 70;
+      var marginTop    = 30;
+      var marginRight  = 30;
+      var marginBottom = 70;  
+      var innerWidth  = 900  - marginLeft - marginRight;
+      var innerHeight = 450 - marginTop  - marginBottom
+      var rMin = 2; 
+      var rMax = 50;
+      var colorColumn = "area";
+      display_year = 1900
+      
+      // Defining a function that filters data by year
+      function yearFilter(value){
+        return (value.Year == display_year)
+      }
+      regionSelect = '';
+      govtselect= "";
+      
+      // Defining a function that filters data by Region
+      function regfilter(value){
+        if (regionSelect == '')
+          return value
+        else
+          s = value.Region
+          return (s.includes(regionSelect))
+      }
+
+      // Defining a function that filters data by Government Type
+      function govtfilter(value){
+        if (govtselect == '')
+          return value
+        else
+          s = value.Government
+          return (s == govtselect)
+      }
+
+      // Appending SVG to D3 (Bubble Chart)
+      var svg = d3.select("#mainsvg").append("svg")
+        .attr("width",  outerWidth)
+        .attr("height", outerHeight)
+        .style("background-color","#111111")
+        .append("g")
+        .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
+
+      // set the scale and range for the Bubble Chart
+      var xScale = d3.scale.log().range([0, innerWidth]);
+      var yScale = d3.scale.linear().range([innerHeight, 0]);
+      var rScale = d3.scale.sqrt().range([2, 50]); // sqrt scale for bubbles
+      var clrscle = d3.scale.ordinal().range(["#1affff","yellow","blue","#ff66b3","#00ff00","teal","white","red"]); // setting the range of colors for regions
+
+      var yAxis = d3.svg.axis()
+                  .scale(yScale)
+                  .ticks(7)
+                  .orient("left");
+
+      var xAxis = d3.svg.axis()
+                  .scale(xScale)
+                  .ticks(10,d3.format(",d")) //formatting to show logarithmic scale
+                  .orient("bottom");
+
+      // set the Y domain to the min and max values of Life Expectancy from the dataset            
+      yScale.domain([15.226,87.69])
+                         
+      // set the X domain to the min and max values of GDP from the dataset                     
+      xScale.domain([142,182668])
+                          
+      svg.append("g")
+        .attr("class", "axis")
+        .call(yAxis);
+
+      svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(0," +innerHeight+ ")")
+        .call(xAxis);
+
+      // Appending text to SVG for displaying the Year
+      svg.append("text")
+         .attr("id", "newyear")
+         .attr("text-anchor","end")         
+         .attr("x",650) 
+         .attr("y",225)
+         .style("opacity",0.5)
+         .attr("fill","white")
+         .attr("font-size","250px")
+         .text(+display_year);
+
+      // Labels for Y-Axis
+      svg.append("text")     
+          .attr("transform", "rotate(-90)")
+          .attr("y",-50)
+          .attr("x",-200)
+          .style("text-anchor", "middle")
+          .attr("dy", "1em")
+          .attr("fill","grey")
+          .text("Average Life Expectancy (Years)");
+
+      // Labels for X-Axis
+      svg.append("text")      
+          .attr("x", outerWidth/2 -80)
+          .attr("y",  innerHeight + 40 )
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("GDP Per Capita (USD)");
+
+      // Legend : Appending rectangles & Text
+      svg.append("rect")
+          .attr("x", 10)
+          .attr("y", 420)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","white")
+          .on("mouseover", function(d){ // using the SVG 'mouseover' functionality to add a filter selection feature
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "Central America"
+            genviz()
+          })
+         
+          .on("mouseout", function(d){ // using the SVG 'mouseout' feature to reset the regionSelect to display all regions
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+      
+      svg.append("text")      
+          .attr("x", 90)
+          .attr("y",437 )
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("Central America");
+
+      svg.append("rect")
+          .attr("x", 10)
+          .attr("y", 460)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","#ff66b3")
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "North America"
+            genviz()
+          })
+          .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+       svg.append("text")      
+          .attr("x", 86)
+          .attr("y",475 )
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("North America"); 
+
+      svg.append("rect")
+          .attr("x", 170)
+          .attr("y", 420)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","#00ff00")
+          .on("mouseover", function(d){  
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "South America"
+            genviz()
+          })
+      .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect="" 
+            genviz()
+          })
+      svg.append("text")      
+          .attr("x", 245)
+          .attr("y", 437)
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("South America");
+
+
+      svg.append("rect")
+          .attr("x", 170)
+          .attr("y", 460)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","red")
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "Oceania"
+            genviz()
+          })
+           .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+      svg.append("text")      
+          .attr("x", 222)
+          .attr("y", 475)
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("Oceania");
+
+      svg.append("rect")
+          .attr("x", 320)
+          .attr("y", 420)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","blue")
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "Europe"
+            genviz()
+          })
+          .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+      svg.append("text")      
+          .attr("x", 368)
+          .attr("y", 437)
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("Europe");
+
+      svg.append("rect")
+          .attr("x", 320)
+          .attr("y", 460)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","teal")
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "Australia"
+            genviz()
+          })
+      .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+      svg.append("text")      
+          .attr("x", 373)
+          .attr("y", 475)
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("Australia");
+
+      svg.append("rect")
+          .attr("x", 450)
+          .attr("y", 420)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","#1affff")
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "Asia"
+            genviz()
+          })
+          
+          .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+      svg.append("text")      
+          .attr("x", 491)
+          .attr("y", 437)
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("Asia");
+
+      svg.append("rect")
+          .attr("x", 450)
+          .attr("y", 460)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill","Yellow")
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect = "Africa"
+            genviz()
+          })
+          .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+            regionSelect=""
+            genviz()
+          })
+      svg.append("text")      
+          .attr("x", 495)
+          .attr("y", 475)
+          .style("text-anchor", "middle")
+          .attr("fill","grey")
+          .text("Africa");
+
+      function genviz(){
+    
+        // filter according to year
+        filtered_datset = dataset.filter(yearFilter);
+        // filter according to region
+        filtered_datset = filtered_datset.filter(regfilter);
+        //filter according to Govt
+        filtered_datset = filtered_datset.filter(govtfilter);
+
+        //setting the domain for coloring the bubbles
+        clrscle.domain(["Asia","Africa","Europe","North America","South America","Australia","Central America","Oceania"]);
+
+        rScale.domain(d3.extent(dataset, function (d){ return +d["Population"]; }));
+
+        var circles = svg.selectAll("circle").data(filtered_datset,function key(d){
+          return d.Country
+        });
+
+        //Update Function : Creating the circles
+        circles
+          .transition()
+          .duration(1000)
+          .ease("linear")
+          .attr("cx", function (d){ return xScale(+d["GDP"]); })
+          .attr("cy", function (d){ return yScale(+d["LifeExp"]); })
+          .attr("r",  function (d){ return rScale(+d["Population"]); }) // scaling the radius according to population
+          .attr("fill",    function (d){ return   clrscle(d["Region"]); }) 
+          .attr("stroke",'black')
+          .style("opacity", 0.9);
+
+        //Enter Function : Creates a place holder for the circles
+        circles.enter().append("circle")
+          .attr("cx", function (d){ return xScale(+d["GDP"]); })
+          .attr("cy", function (d){ return yScale(+d["LifeExp"]); })
+          .attr("r",  function (d){ return rScale(+d["Population"]); })
+          .attr("fill",    function (d){ return   clrscle(d["Region"]); })
+          .attr("stroke",'black')
+          
+
+          //To see label for countries when hovering mouse
+          .on("mouseover", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+              .style("stroke-width", 2);
+          })
+
+          .on("mouseout", function(d){
+            d3.select(this)
+              .transition()
+              .duration(1000)
+              .style("stroke-width", 1);
+          })
+
+          // To Label the Countries(bubbles)
+          .append("title")
+          .text(function(d){
+            return "Country: " + d.Country;
+          });
+
+
+        // Exit Function : When data is not present
+        circles.exit()
+        .transition()
+        .duration(1000)
+        .attr("r",0)
+        .remove();
+
+        d3.select("#year_header").text("Year: " + display_year)
+        d3.select("#newyear").text(display_year)
+        
+      }
+
+      // Reading data from csv dataset
+      d3.csv("./data/Gapminder_All_Time.csv", function(data){
+        dataset = data;
+        genviz(); // calling the genviz function to generate the visualisation
+      });
+    </script>
+
+    <!-- creating the play and pause buttons -->
+    <br> 
+    <div class = "button-bar" style="display: inline; padding-left: 2%;">
+      <a id = "play_button"><img src="./images/playbut.png" style="height: 32px; width: 32px"></a>
+      <a id = "pause_button"><img src="./images/pausebut.png" style="height: 32px; width: 32px"></a>          
+    </div>
+
+    <!-- creating the slider -->
+    <div style="display: inline;">
+        <input class = "slider" type="range" Id="Year" value = 1900 min="1900" max="2016" oninput = "sliderchange(Year.value)" style="width: 800px">
+    </div>
+  </div>
+
+<div class="col-lg-6">
+  <div class= "row" id= "bar1">
+     <!--Bar chart 1-->
+	  
+	  <script type="text/javascript" >
+	    var svg1_outerWidth = 800;
+      var svg1_outerHeight = 300;
+      var svg1_marginLeft   = 70;
+      var svg1_marginTop    = 30;
+      var svg1_marginRight  = 10;
+      var svg1_marginBottom = 50;
+      var svg1_innerWidth  = 400  - svg1_marginLeft - svg1_marginRight;
+      var svg1_innerHeight = 250 - svg1_marginTop  - svg1_marginBottom;
+      var rMin = 2; 
+      var rMax = 50;
+      var svg1_colorColumn = "area";
+	    svg1_display_year = 1900
+	  
+	    // define a function that filters data by year
+      function yearFilter(value){
+        return (value.Year == display_year)
+      }
+
+      regionSelect = '';
+      govtselect= "";
+      
+      // define a function that filters data by Region
+      function regfilter(value){
+        if (regionSelect == '')
+          return value
+        else
+          s = value.Region
+          return (s.includes(regionSelect))
+      }
+
+      // define a function that filters data by Govt
+      function govtfilter(value){
+        if (govtselect == '')
+          return value
+        else
+          s = value.Government
+          return (s == govtselect)
+      }
+
+	    // create a var svg and append it to body
+		  var svgbar1 = d3.select("#bar1").append("svg")
+        .attr("width",  svg1_outerWidth)
+        .attr("height", svg1_outerHeight)
+        .style("background-color","#666666")
+        .append("g")
+        .attr("transform", "translate(" +svg1_marginLeft + "," + svg1_marginTop + ")");
+
+      var xScalebar1 = d3.scale.ordinal().rangeBands([0, 1.5 * svg1_innerWidth]);
+      var yScalebar1 = d3.scale.linear().range([svg1_innerHeight, 0]);
+      var rScalebar1 = d3.scale.sqrt().range([2, 50]); // sqrt scale for bubbles
+      //setting the range of colors for regions
+		  var clrsclebar1 = d3.scale.ordinal().range(["#1affff","yellow","blue","teal","red","#00ff00","white","#ff66b3"]);
+   
+	    var yAxisbar1 = d3.svg.axis()
+                  .scale(yScalebar1)
+                  .ticks(7)
+                  .orient("left");
+
+      var xAxisbar1 = d3.svg.axis()
+                  .scale(xScalebar1)
+                  .ticks(10,d3.format(",d")) // formatting to show logarithmic scale
+                  .orient("bottom");
+	
+	    // set the Y domain to the min and max values of Life Expectancy from the dataset            
+      // yScalebar1.domain([15.226,84.1])
+	    yScalebar1.domain([0,60])
+                         
+      // set the X domain to the min and max values of GDP from the dataset                     
+      xScalebar1.domain(["Asia","Africa","Europe","Australia","Oceania","South America","Central America","North America"])
+                          
+      svgbar1.append("g")
+        .attr("class", "axis")
+        .call(yAxisbar1);
+
+      svgbar1.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(0," +svg1_innerHeight+ ")")
+        .call(xAxisbar1)
+		    .selectAll("text")
+		    .attr("dy",-20)
+		    .attr("dx",-50)
+		    .attr("transform", "rotate(-45)");
+		  
+	    // text label for the y axis
+      svgbar1.append("text")     
+          .attr("transform", "rotate(-90)")
+          .attr("y",-40)
+          .attr("x",-110)
+          .style("text-anchor", "middle")
+          .attr("fill","#660033")
+          .text("Country Count");
+ 
+      // text label for the x axis
+      svgbar1.append("text")      
+          .attr("x", svg1_outerWidth/2 -80)
+          .attr("y",  svg1_innerHeight + 40 )
+          .style("text-anchor", "middle")
+          .attr("fill","#660033")
+          .text("Region");
+		
+		  function svg1_genviz(){
+    
+        // filter according to year
+        filtered_datset = dataset.filter(yearFilter);
+        // filter according to region
+        filtered_datset = filtered_datset.filter(regfilter);
+        //filter according to Govt
+        filtered_datset = filtered_datset.filter(govtfilter);
+        // setting the domain for coloring the bubbles
+        clrsclebar1.domain(["Asia","Africa","Europe","Australia","Oceania","South America","Central America","North America"]);
+
+        rScalebar1.domain(d3.extent(dataset, function (d){ return +d["Population"]; }));
+
+    		var recbar = svgbar1.selectAll("rect").data(filtered_datset,function key(d){
+          return d.Region
+      });
+
+		  var cc = d3.nest()
+    		.key(function(d){return d.Region;})
+    		.key(function(d){return d.Country;})
+    		.rollup(function(leaves){return leaves.length;})
+    		.entries(filtered_datset);
+    
+        // update functionality
+      recbar
+        .transition()
+        .duration(1000)
+        .attr("x", function (d){ return +xScalebar1(d["Region"]); })
+        .attr("y", function(d){
+		      for(var key in cc){
+				    if(cc[key].key.toString()==d.Region){
+					     return  +yScalebar1(cc[key].values.length);
+				    }
+		      }
+		    })
+        .attr("height", function(d){
+		      for(var key in cc){
+				    if(cc[key].key.toString()==d.Region){
+					     return +svg1_innerHeight-yScalebar1(cc[key].values.length);
+				    }
+		      }
+		    }) 
+        .attr("width", 25 )
+		    .attr("fill", function (d){ return clrsclebar1(d["Region"]); })
+        .attr("stroke",'black')
+        .style("opacity", 0.9);
+
+        // Enter Function
+        recbar.enter().append("rect")
+          .attr("x", function (d){ return +xScalebar1(d["Region"]); })
+          .attr("y", function(d){
+		        for(var key in cc){
+				      if(cc[key].key.toString()==d.Region){
+					       return +yScalebar1(cc[key].values.length);
+				      }
+		        }
+		      })
+          .attr("height",  function(d){
+		        for(var key in cc){
+				      if(cc[key].key.toString()==d.Region){
+					       return +svg1_innerHeight-yScalebar1(cc[key].values.length);
+				      }
+		        }
+		      })
+		      .attr("width",  25)
+          .attr("fill",  function (d){ return clrsclebar1(d["Region"]); })
+          .attr("stroke",'black');
+          
+          // exit functionality when data is not present
+          recbar.exit()
+          .remove();
+
+          d3.select("#year_header").text("Year: " + display_year)
+          d3.select("#newyear").text(display_year)
+      }
+
+	</script>
+	</div>
+  <!-- Bar Chart 2 -->
+  <div class ="row" id= "bar2">
+    <!-- bar 2 contents -->
+    <script type="text/javascript" >
+	    var svg2_outerWidth = 800;
+      var svg2_outerHeight = 450;
+      var svg2_marginLeft   = 70;
+      var svg2_marginTop    = 60;
+      var svg2_marginRight  = 10;
+      var svg2_marginBottom = 100;
+      var svg2_innerWidth  = 400  - svg2_marginLeft - svg2_marginRight;
+      var svg2_innerHeight = 420 - svg2_marginTop  - svg2_marginBottom
+      var rMin = 2; 
+      var rMax = 50;
+      var svg2_colorColumn = "area";
+	    svg2_display_year = 1900
+	  
+	    // define a function that filters data by year
+      function yearFilter(value){
+        return (value.Year == display_year)
+      }
+
+      regionSelect = '';
+      govtselect= "";
+      
+      // define a function that filters data by Region
+      function regfilter(value){
+        if (regionSelect == '')
+          return value
+        else
+          s = value.Region
+          return (s.includes(regionSelect))
+      }
+
+      // define a function that filters data by Govt
+      function govtfilter(value){
+        if (govtselect == '')
+          return value
+        else
+          s = value.Government
+          return (s == govtselect)
+      }
+
+	    // create a var svg and append it to body
+		  var svgbar2 = d3.select("#bar2").append("svg")
+        .attr("width",  svg2_outerWidth)
+        .attr("height", svg2_outerHeight)
+        .style("background-color","#666666")
+        .append("g")
+        .attr("transform", "translate(" +svg2_marginLeft + "," + svg2_marginTop + ")");
+			
+	    var xScalebar2 = d3.scale.ordinal().rangeBands([0,1.5* svg2_innerWidth]);
+      var yScalebar2 = d3.scale.linear().range([svg2_innerHeight, 0]);
+      var rScalebar2 = d3.scale.sqrt().range([2, 50]); // sqrt scale for bubbles
+		  var clrsclebar2 = d3.scale.ordinal().range(["#000066","#000066","#000066","#000066","#000066","#000066","#000066","#000066","#000066"]); // setting the range of colors for regions
+		  var text_wrap = d3.selectxScalebar2
+	    var yAxisbar2 = d3.svg.axis()
+                  .scale(yScalebar2)
+                  .ticks(12)
+                  .orient("left");
+
+      var xAxisbar2 = d3.svg.axis()
+                  .scale(xScalebar2)
+                  .ticks(15,d3.format(",d")) // formatting to show logarithmic scale
+                  .orient("bottom");
+	
+	    //set the Y domain to the min and max values of Life Expectancy from the dataset            
+      yScalebar2.domain([0,100])
+                         
+      // set the X domain to the min and max values of GDP from the dataset                     
+      xScalebar2.domain(["islamic republic","republic","monarchy","external territory","federal republic","absolute monarchy","people's republic","socialist republic","parliamentary federal republic"]);
+                          
+      svgbar2.append("g")
+        .attr("class", "axis")
+        .call(yAxisbar2);
+
+      svgbar2.append("g")
+        .attr("class", "axis")
+		    .attr("id","changinglabels")
+        .attr("transform", "translate(0," +svg2_innerHeight+ ")")
+        .call(xAxisbar2)
+    		.selectAll("text")
+    		.attr("dy",-20)
+    		.attr("dx",-50)
+    		.attr("transform", "rotate(-45)");
+ 
+	    // text label for the y axis
+      svgbar2.append("text")     
+          .attr("transform", "rotate(-90)")
+          .attr("y",-40)
+          .attr("x",-150)
+          .style("text-anchor", "middle")
+          .attr("fill","#660033")
+          .text("Country Count");
+
+      // text label for the x axis
+      svgbar2.append("text")      
+          .attr("x", svg2_outerWidth/2 -80)
+          .attr("y",  svg2_innerHeight + 40 )
+          .style("text-anchor", "middle")
+          .attr("fill","#660033")
+          .text("Government Type");
+		
+		  function svg2_genviz(){ 
+		
+        // filter according to year
+        filtered_datset = dataset.filter(yearFilter);
+        // filter according to region
+        filtered_datset = filtered_datset.filter(regfilter);
+        //filter according to Govt
+        filtered_datset = filtered_datset.filter(govtfilter);
+
+        // setting the domain for coloring the bubbles
+        clrsclebar2.domain(["absolute monarchy","external territory","federal republic","islamic republic","monarchy","parliamentary federal republic","people's republic","republic","socialist republic"]);
+
+        rScalebar2.domain(d3.extent(dataset, function (d){ return +d["Population"]; }));
+
+		    var recbar1 = svgbar2.selectAll("rect").data(filtered_datset,function key(d){
+          return d.Government
+        });
+		  
+	     	var cc1 = d3.nest()
+		    .key(function(d){return d.Government;})
+		    .key(function(d){return d.Country;})
+		    .rollup(function(leaves){return leaves.length;})
+		    .entries(filtered_datset);
+		
+		    console.log(d3.map(filtered_datset,function(d){return d.Government}).keys());
+		    government_names_obj = d3.map(filtered_datset,function(d){return d.Government}).keys()
+		    var government_names=[];
+		
+		    for(var key in government_names_obj){
+		    government_names.push(government_names_obj[key]);
+		  }
+		
+		xScalebar2.domain(government_names);
+		
+		svgbar2.select("#changinglabels")
+        .call(xAxisbar2)
+		.selectAll("text")
+		.attr("dy",-20)
+		.attr("dx",-50)
+		.attr("transform", "rotate(-45)");
+
+        // update functionality
+        recbar1
+          .transition()
+          .duration(1000)
+          //.ease("linear")
+          .attr("x", function (d){ return +xScalebar2(d["Government"]); })
+          .attr("y", function(d){
+		  for(var key in cc1){
+				if(cc1[key].key.toString()==d.Government){
+					return yScalebar2(+cc1[key].values.length);
+				}
+		  }
+		  })
+          .attr("height", function(d){
+		  for(var key in cc1){
+				if(cc1[key].key.toString()==d.Government){
+					return svg2_innerHeight - yScalebar2(+cc1[key].values.length);
+				}
+		  }
+		  })  
+          .attr("width", 25 )
+		  .attr("fill", function (d){ return clrsclebar2(d["Government"]); })
+          .attr("stroke",'black')
+          .style("opacity", 0.9);
+
+        // enter functionality
+        recbar1.enter().append("rect")
+          .attr("x", function (d){ return +xScalebar2(d["Government"]); })
+          .attr("y", function(d){
+		  for(var key in cc1){
+				if(cc1[key].key.toString()==d.Government){
+					return yScalebar2(+cc1[key].values.length);
+				}
+		  }
+		  })
+          .attr("height",  function(d){
+		  for(var key in cc1){
+				if(cc1[key].key.toString()==d.Government){
+					return svg2_innerHeight - yScalebar2(+cc1[key].values.length);
+				}
+		  }
+		  })
+		  .attr("width",  25)
+          .attr("fill",  function (d){ return clrsclebar2(d["Government"]); })
+          .attr("stroke",'black');
+          
+
+          
+
+
+        // exit functionality when data is not present
+        recbar1.exit()
+        .remove();
+
+        d3.select("#year_header").text("Year: " + display_year)
+        d3.select("#newyear").text(display_year)
+        
+      }
+
+   </script>
+  </div>
+</div>
+
+</div>
+    <script type="text/javascript">
+      document.getElementById("pause_button").style.display = "none"; // initially hiding the pause button
+
+      d3.select("#play_button")
+      .on("click", function() {
+        // Set up the interval callback
+        playInterval = setInterval(function() {
+        // Increment the display year by 10 till 1950 and then by 1
+
+        if (display_year < 1950){
+          for(var i=display_year%10;i<10; i++)
+          {
+            display_year++;
+          }
+          }else{
+            display_year++;
+          
+        }
+          $("#Year").val(display_year);      
+        // Make the display_year loop around from max to min
+          if(display_year > 2016){
+            display_year = 1900;
+            //clearInterval(playInterval);
+          }
+          genviz();
+		  svg1_genviz();
+		  svg2_genviz();
+        
+          document.getElementById("play_button").style.display = "none"; // hiding the play button 
+
+          document.getElementById("pause_button").style.display = "inline"; // displaying the pause button
+        
+        }, 1000);
+      }); 
+
+      // A global variable for the interval listeneer so that it can be stopped elsewhere
+      var playInterval;      
+      // Add an event listener to the play all button do that when it is clicked the visualisaiton iterates through the different years
+      d3.select("#pause_button")
+      .on("click", function() {            
+        clearInterval(playInterval);
+        document.getElementById("play_button").style.display = "inline"; // displaying the play button
+        document.getElementById("pause_button").style.display = "none"; // hiding the pause button
+      }); 
+
+      function sliderchange(year)
+      {
+        display_year = year // set the display_year to the value from the slider
+        genviz();
+        d3.select("#year_header").text("Year: " + year)
+      }
+    </script>
+  </body>
+</html>
