@@ -1,6 +1,7 @@
 # data-visualization
 
-This data visualization is a tribute Hans Rosling, a famous statistician, and public speaker who had the ability to bring life to the data. Inspired by one of his "story-telling-with-the-data" project, I have tried to get into his mind-set.It has  Scatter plot with colour groupings and size encoding for the third variable of country size
+This data visualization is a tribute Hans Rosling, a famous statistician, and public speaker who had the ability to bring life to the data. Inspired by one of his "story-telling-with-the-data" project, I have tried to get into his mind-set.  
+It has  Scatter plot with colour groupings and size encoding for the third variable of country size
 
 This is how it looks once the setup is ready!  
 
